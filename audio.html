@@ -1,0 +1,173 @@
+<html>
+	<head>
+		<title></title>
+		<style type="text/css">
+			body{
+				background-color: black;
+			}
+		</style>
+		<script src="js/dat.gui.min.js"></script>
+		<script type="text/javascript">
+			 if (! window.AudioContext) {
+			 	if (! window.webkitAudioContext) {
+			 		alert('Su navegador no es compatible con la API de Audio');
+			 	}
+			 	window.AudioContext = window.webkitAudioContext;
+			 }
+
+			var context = new AudioContext();
+			var audioBuffer;
+			var sourceNode;
+			// setup a javascript node
+			//javascriptNode = context.createScriptProcessor(2048, 1, 1);
+
+			// load the sound
+			setupAudioNodes();
+			loadSound("Late_Night_Snack.mp3");
+			 
+			function setupAudioNodes() {
+				// setup a javascript node
+				javascriptNode = context.createScriptProcessor(256, 1, 1);
+				// connect to destination, else it isn't called
+				javascriptNode.connect(context.destination);
+
+				// setup a analyzer
+				analyser = context.createAnalyser();
+				analyser.smoothingTimeConstant = 0.9;
+				analyser.fftSize = 32;
+				
+				// create a buffer source node
+				sourceNode = context.createBufferSource();
+
+				// connect the source to the analyser
+				sourceNode.connect(analyser);
+
+				// we use the javascript node to draw at a specific interval.
+				analyser.connect(javascriptNode);
+
+				// and connect to destination, if you want audio
+				sourceNode.connect(context.destination);
+			}
+			
+			// load the specified sound
+			function loadSound(url) {
+				var request = new XMLHttpRequest();
+				request.open('GET', url, true);
+				request.responseType = 'arraybuffer';
+				
+				document.title = 'Cargando...';
+				// When loaded decode the data
+				request.onload = function() {
+					// decode the data
+					context.decodeAudioData(request.response, function(buffer) {
+						// when the audio is decoded play the sound
+						audioBuffer = buffer;
+						document.title = 'Listo!';
+					}, onError);
+				}
+				request.send();
+			}
+			 
+			 
+			function playSound(buffer) {
+				sourceNode.buffer = buffer;
+				sourceNode.start(0);
+			}
+
+			function onError(e) { console.log(e); }
+
+			javascriptNode.onaudioprocess = function() {
+			// get the average, bincount is fftsize / 2
+			array =  new Uint8Array(analyser.frequencyBinCount);
+			analyser.getByteFrequencyData(array);
+			var average = getAverageVolume(array)
+
+			/*// clear the current state
+			ctx.clearRect(0, 0, 60, 130);
+			// set the fill style
+			ctx.fillStyle=gradient;
+			// create the meters
+			ctx.fillRect(0,130-average,25,130);*/
+
+			//document.title = average;
+			render();
+			}
+
+		function getAverageVolume(array) {
+			var values = 0;
+			var average;
+			var length = array.length;
+			// get all the frequency amplitudes
+			for (var i = 0; i < length; i++) {
+				values += array[i];
+			}
+			average = values / length;
+			return average;
+		}
+
+		window.onclick = function(){
+			playSound(audioBuffer);
+		};
+
+		</script>
+	</head>
+	<body>
+		<script type="text/javascript">
+		var parametros = function() {
+			this.a = 0;
+			this.b = 0;
+			this.c = 0;
+			this.d = 0;
+			this.e = 0;
+			this.f = 0;
+			this.g = 0;
+			this.h = 0;
+			this.i = 0;
+			this.j = 0;
+			this.k = 0;
+			this.l = 0;
+			this.m = 0;
+			this.n = 0;
+			this.o = 0;
+			this.p = 0;
+		};
+		var params = new parametros();
+		var gui = new dat.GUI();
+		gui.add(params, 'a', 0, 255).listen();
+		gui.add(params, 'b', 0, 255).listen();
+		gui.add(params, 'c', 0, 255).listen();
+		gui.add(params, 'd', 0, 255).listen();
+		gui.add(params, 'e', 0, 255).listen();
+		gui.add(params, 'f', 0, 255).listen();
+		gui.add(params, 'g', 0, 255).listen();
+		gui.add(params, 'h', 0, 255).listen();
+		gui.add(params, 'i', 0, 255).listen();
+		gui.add(params, 'j', 0, 255).listen();
+		gui.add(params, 'k', 0, 255).listen();
+		gui.add(params, 'l', 0, 255).listen();
+		gui.add(params, 'm', 0, 255).listen();
+		gui.add(params, 'n', 0, 255).listen();
+		gui.add(params, 'o', 0, 255).listen();
+		gui.add(params, 'p', 0, 255).listen();
+
+		var render = function() {
+			params.a = array[0];
+			params.b = array[1];
+			params.c = array[2];
+			params.d = array[3];
+			params.e = array[4];
+			params.f = array[5];
+			params.g = array[6];
+			params.h = array[7];
+			params.i = array[8];
+			params.j = array[9];
+			params.k = array[10];
+			params.l = array[11];
+			params.m = array[12];
+			params.n = array[13];
+			params.o = array[14];
+			params.p = array[15];
+		}
+		</script>
+	</body>
+</html>

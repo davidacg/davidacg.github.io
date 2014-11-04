@@ -1,0 +1,322 @@
+<html>
+	<head>
+		<title></title>
+		<style>
+			body { margin: 0px; overflow: hidden; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="js/three.min.js"></script>
+		<script src="js/dat.gui.min.js"></script>
+		<script src="js/stats.min.js"></script>
+		<!--<script src="js/loaders/DDSLoader.js"></script>
+		<script src="js/loaders/MTLLoader.js"></script>
+		<script src="js/loaders/OBJMTLLoader.js"></script>-->
+		<script src="js/helvetiker_regular.typeface.js"></script>
+		<script src="js/audio.js"></script>
+
+		<script>
+			//	Estadisticas
+			var stats = new Stats();
+			stats.setMode(0); // 0: fps, 1: ms
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '0px';
+			stats.domElement.style.top = '0px';
+			document.body.appendChild( stats.domElement );
+
+			//	dat.gui
+			var parametros = function() {
+				this.velocidad = 0.5;
+				this.colision = 1;
+				this.Volumen = 0.8;
+				this.vidas = 5;
+			};
+			var params = new parametros();
+			var startGame = { Iniciar:function(){
+				if(ready && params.vidas > 0){
+					playSound(audioBuffer);
+					game = true;
+				}
+			}};
+			var gui = new dat.GUI();
+			var volume = gui.add(params, 'Volumen', 0, 1).listen();
+			//gui.add(params, 'velocidad', 0, 1).listen();
+			//gui.add(params, 'colision', 0, 1);
+			gui.add(params, 'vidas', 0, 5).listen();
+			gui.add(startGame,'Iniciar');
+			gainNode.gain.value = volume.getValue();
+
+			var mueveCam = { izq : false, der : false };
+			var ready = false, game = false;
+			var vulnerable = true;
+
+			var scene = new THREE.Scene();
+			scene.fog = new THREE.FogExp2( 0x000000, 0.05 );
+			var camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
+
+			//var renderer = new THREE.WebGLRenderer();
+			var renderer = new THREE.WebGLRenderer({antialias:true});
+			renderer.setClearColor( 0x000000 );
+			renderer.setSize(window.innerWidth,window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			// Plano
+			var subd = 64;
+			var cbgeometry = new THREE.PlaneGeometry( 160, 500, subd, subd );
+			var cbmaterials = [];
+			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide }) );
+			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0x000000, side: THREE.DoubleSide }) );
+			var l = cbgeometry.faces.length / 2;
+			for( var i = 0; i < l; i ++ ) {
+				j = i * 2;
+				cbgeometry.faces[ j ].materialIndex = ((i + Math.floor(i/subd)) % 2);
+				cbgeometry.faces[ j + 1 ].materialIndex = ((i + Math.floor(i/subd)) % 2);
+			}
+			cbgeometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+			cb = new THREE.Mesh( cbgeometry, new THREE.MeshFaceMaterial( cbmaterials ) );
+			cb.position.y = -2.5;
+			scene.add( cb );
+
+			//Muros
+			var muroGeometry = new THREE.BoxGeometry(1,5,500);
+			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, emissive : 0x666666 });
+			var muro0 = new THREE.Mesh(muroGeometry,material);
+			var muro1 = new THREE.Mesh(muroGeometry,material);
+			muro0.position.x = -20;
+			muro1.position.x = 20;
+			scene.add(muro0);
+			scene.add(muro1);
+
+			//Obstaculos
+			var obstaclesGeometry = new THREE.BoxGeometry(2,5,2);
+			var obstacles = [];
+			var numObstacles = 1000;
+			for (var i = 0; i < numObstacles; i++) {
+				var material = new  THREE.MeshLambertMaterial({
+					emissive : new THREE.Color( 0, Math.random(), Math.random() ),
+					transparent: true, opacity: 1.0});
+				obstacles[i] = new THREE.Mesh(obstaclesGeometry, material);
+				obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
+				obstacles[i].position.z = -(Math.random() * (2500 - 25) + 25);
+				scene.add(obstacles[i]);
+			}
+
+			//Texto
+			var text = [];
+			var textParams = {size: 1,height: 0.25,curveSegments: 8,font: "helvetiker"};
+			var textoGeometry = new THREE.TextGeometry('Loading',textParams);
+			textoGeometry.computeBoundingBox();
+			var centerOffsetX = -0.5 * ( textoGeometry.boundingBox.max.x - textoGeometry.boundingBox.min.x );
+			var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
+			var textMaterial = new THREE.MeshLambertMaterial( {
+				color : 0xffffff,
+				emissive : 0x101010,
+				transparent : true,
+				opacity: 1.0
+			} );
+			text[0] = new THREE.Mesh( textoGeometry, textMaterial );
+			text[0].position.x = centerOffsetX;
+			text[0].position.y = centerOffsetY;
+			scene.add(text[0]);
+
+			//Modelos
+			/*THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+			var loader = new THREE.OBJMTLLoader();
+			loader.load( 'obj/male02/male02.obj', 'obj/male02/male02_dds.mtl', function ( object ) {
+				object.position.y = -80;
+				object.position.z = -80;
+				scene.add( object );
+			} );*/
+
+			//Iluminacion
+			var ambientLight = new THREE.AmbientLight( 0x101010 );
+			scene.add( ambientLight );
+			var directionalLight0 = new THREE.DirectionalLight(0x000080);
+			directionalLight0.position.set(0,200,0).normalize();
+			var directionalLight1 = new THREE.DirectionalLight(0x008000);
+			directionalLight1.position.set(0,200,0).normalize();
+			//var pointLight0 = new THREE.PointLight(0x00ff00, 1, 100);
+			//pointLight0.position.set(20,200,0).normalize();
+			
+			scene.add(directionalLight0);
+			scene.add(directionalLight1);
+			//scene.add(pointLight0);
+
+			var spotLight = new THREE.SpotLight( 0xffffff, 0.5 );
+			spotLight.position.set( 0, 1000, 100 );
+			/*spotLight.castShadow = true;
+			spotLight.shadowMapWidth = 1024;
+			spotLight.shadowMapHeight = 1024;
+			spotLight.shadowCameraNear = 500;
+			spotLight.shadowCameraFar = 4000;
+			spotLight.shadowCameraFov = 30;*/
+			scene.add( spotLight );
+
+			var damageLight = new THREE.SpotLight( 0xff0000, 0 );
+			damageLight.position.set( 0, 1000, -100 );
+			scene.add( damageLight );
+
+			camera.position.z = 5;
+
+			window.onresize = onWindowResize;
+			document.onkeydown = onKeyDown;
+			document.onkeyup = onKeyUp;
+
+			function render() {
+				if(game){stats.begin();}	//	Estadisticas
+				requestAnimationFrame(render);
+				//camera.fov += 0.1;
+				//camera.updateProjectionMatrix();
+				//cb.position.z += 0.25;
+				if(!ready)
+				{
+					if(audioBuffer !== undefined)
+						text[0].material.opacity -= 0.01;
+					if(text[0].material.opacity <= 0)
+					{
+						scene.remove(text[0]);
+						ready = true;
+					}
+				}
+
+				if(game){
+					cb.position.z += params.velocidad;
+					muro0.position.z += params.velocidad;
+					muro1.position.z += params.velocidad;
+					for (var i = 0; i < numObstacles; i++)
+						obstacles[i].position.z += params.velocidad;
+					if(cb.position.z > 270){
+						cb.position.z = -300;
+						muro0.position.z = muro1.position.z = -300;
+					}
+				}else{
+					cb.position.z = -250;
+					muro0.position.z = muro1.position.z = -250;
+				}
+
+				var camRot = 0.0025;
+				var camRot2 = 0.0075;
+
+				if(mueveCam.izq && camera.position.x > -18){
+					camera.position.x -= 0.25;
+					camera.rotation.z += camRot;
+				}
+				if(mueveCam.der && camera.position.x < 18){
+					camera.position.x += 0.25;
+					camera.rotation.z -= camRot;
+				}
+
+				if(!mueveCam.izq && !mueveCam.der)
+				{
+					//if(-camRot < camera.rotation.z > camRot)
+						//camera.rotation.z = 0;
+					if(camera.rotation.z < -camRot)
+						camera.rotation.z += camRot2;
+					if(camera.rotation.z > camRot)
+						camera.rotation.z -= camRot2;
+				}
+
+
+				directionalLight1.color.setRGB(0,(average/140),0);
+				muro0.material.opacity = (average/140);
+
+				colisiona();
+
+				if(params.vidas<=0){
+					if(params.Volumen > 0){
+						params.Volumen -= 0.01;
+						gainNode.gain.value = params.Volumen;
+					}else{
+						sourceNode.stop();
+					}
+					for (var i = 0; i < numObstacles; i++){
+						if(obstacles[0].position.y > -5.5)
+							obstacles[i].position.y -= 0.05;
+						if(obstacles[0].material.opacity > 0)
+							obstacles[i].material.opacity -= 0.005;
+						}
+					game = false;
+				}
+
+				if(damageLight.intensity > 0)
+					damageLight.intensity --;
+
+				//params.velocidad = (average/140);
+
+				renderer.render(scene,camera);
+				if(game){stats.end();}	//	Estadisticas
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function onKeyDown(e) {
+				var tecla = String.fromCharCode(e.keyCode);
+				switch(tecla) {
+					case 'A':
+						mueveCam.izq = true;
+						break;
+					case 'D':
+						mueveCam.der = true;
+						break;
+					default:
+						break;
+					}
+				if(e.keyCode == 32){
+					if(ready){
+						playSound(audioBuffer);
+						game = true;
+					}
+					//directionalLight1.color();
+					//console.log(directionalLight1.color());
+				}
+			}
+
+			function onKeyUp(e) {
+				var tecla = String.fromCharCode(e.keyCode);
+				switch(tecla) {
+					case 'A':
+						mueveCam.izq = false;
+						break;
+					case 'D':
+						mueveCam.der = false;
+						break;
+					default:
+						break;
+					}
+			}
+
+			function colisiona(){
+				rays = [
+					new THREE.Vector3(0,0,-1),
+					new THREE.Vector3(1,0,0),
+					new THREE.Vector3(-1,0,0),
+				]
+				var caster = new THREE.Raycaster();
+				caster.set(camera.position, rays[0]);
+				var collision = caster.intersectObjects(obstacles);
+
+				if (collision.length > 0 && collision[0].distance <= params.colision){
+					damageLight.intensity = 10;
+					if(vulnerable){
+						params.vidas --;
+						vulnerable = false;
+						setTimeout(function(){
+							vulnerable = true;
+						},500)
+					}
+				}
+			}
+
+			volume.onChange(function(value) {
+				gainNode.gain.value = value;
+			})
+
+			render();
+		</script>
+	</body>
+</html>
