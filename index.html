@@ -6,7 +6,7 @@
 			canvas { width: 100%; height: 100% }
 		</style>
 	</head>
-	<body>
+	<body onload="init()">
 		<script src="js/three.min.js"></script>
 		<script src="js/dat.gui.min.js"></script>
 		<script src="js/stats.min.js"></script>
@@ -19,173 +19,179 @@
 		<script src="js/audio.js"></script>
 
 		<script>
-			//	Estadisticas
-			var stats = new Stats();
-			var time = 0.0;
-			stats.setMode(0); // 0: fps, 1: ms
-			stats.domElement.style.position = 'absolute';
-			stats.domElement.style.left = '0px';
-			stats.domElement.style.top = '0px';
-			document.body.appendChild( stats.domElement );
-			setupAudioNodes();
-			loadSound("resources/Coke_Music.mp3");
+		function init(){
+				//	Estadisticas
+				stats = new Stats();
+				time = 0.0;
+				stats.setMode(0); // 0: fps, 1: ms
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.left = '0px';
+				stats.domElement.style.top = '0px';
+				document.body.appendChild( stats.domElement );
 
-			//	dat.gui
-			var parametros = function() {
-				this.velocidad = 0.4;
-				this.colision = 1;
-				this.Volumen = 0.8;
-				this.vidas = 5;
-				this.numObstacles = 0;
-			};
-			var params = new parametros();
-			var startGame = { Iniciar:function(){
-				if(ready && params.vidas > 0){
-					playSound(audioBuffer);
-					game = true;
+				//	dat.gui
+				var parametros = function() {
+					this.velocidad = 0.4;
+					this.colision = 1;
+					this.Volumen = 0.8;
+					this.vidas = 5;
+					this.numObstacles = 0;
+				};
+				params = new parametros();
+				startGame = { Iniciar:function(){
+					if(ready && params.vidas > 0){
+						playSound(audioBuffer);
+						game = true;
+					}
+				}};
+				gui = new dat.GUI();
+				volume = gui.add(params, 'Volumen', 0, 1).listen();
+				gui.add(params, 'vidas', 0, 5).listen();
+				gui.add(params, 'numObstacles', 0, 40).listen();
+				gui.add(startGame,'Iniciar');
+				gainNode.gain.value = volume.getValue();
+
+				mueveCam = { izq : false, der : false };
+				ready = false, game = false;
+				vulnerable = true;
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0x000000, 0.05 );
+				camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
+				caster = new THREE.Raycaster();
+
+				renderer = new THREE.WebGLRenderer({antialias:false, alpha: false});
+				renderer.setClearColor( 0x000000 );
+				renderer.setSize(window.innerWidth,window.innerHeight);
+				document.body.appendChild(renderer.domElement);
+
+				// Plano
+				subd = 64;
+				cbgeometry = new THREE.PlaneGeometry( 160, 500, subd, subd );
+				cbmaterials = [];
+				cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide }) );
+				cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xF40000, side: THREE.DoubleSide }) );
+				var l = cbgeometry.faces.length / 2;
+				for( var i = 0; i < l; i ++ ) {
+					j = i * 2;
+					cbgeometry.faces[ j ].materialIndex = ((i + Math.floor(i/subd)) % 2);
+					cbgeometry.faces[ j + 1 ].materialIndex = ((i + Math.floor(i/subd)) % 2);
 				}
-			}};
-			var gui = new dat.GUI();
-			var volume = gui.add(params, 'Volumen', 0, 1).listen();
-			gui.add(params, 'vidas', 0, 5).listen();
-			gui.add(params, 'numObstacles', 0, 40).listen();
-			gui.add(startGame,'Iniciar');
-			gainNode.gain.value = volume.getValue();
+				cbgeometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+				cb = new THREE.Mesh( cbgeometry, new THREE.MeshFaceMaterial( cbmaterials ) );
+				cb.position.y = -2.5;
+				scene.add( cb );
 
-			var mueveCam = { izq : false, der : false };
-			var ready = false, game = false;
-			var vulnerable = true;
+				//Muros
+				muroGeometry = new THREE.BoxGeometry(1,1,500);
+				material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color : 0xe1e1e1, emissive: 0x2d2d2d });
+				muro0 = new THREE.Mesh(muroGeometry,material);
+				muro1 = new THREE.Mesh(muroGeometry,material);
+				muro0.position.x = -20;
+				muro1.position.x = 20;
+				scene.add(muro0);
+				scene.add(muro1);
 
-			var scene = new THREE.Scene();
-			scene.fog = new THREE.FogExp2( 0x000000, 0.05 );
-			var camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
-			var caster = new THREE.Raycaster();
+				//Obstaculos
+				truck = [];
+				obstacles = [];
+				obsTempPos = [];
+				collisionBox = [];
+				collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
+				numObstacles = 40;
+				THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+				var loader = new THREE.OBJMTLLoader();
+				loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
+					object.position.y = -2.5;
+					object.visible = false;
+					for (var i = 0; i < numObstacles; i++) {
+						collisionBox[i] = new THREE.Mesh(collisionBoxGeometry, material);
+						obstacles[i] = object.clone();
+						posiciona(i);
+						collisionBox[i].visible = false;
+						scene.add(obstacles[i]);
+						scene.add(collisionBox[i]);
+					}
+					numObstacles = 1;
+				} );
+				/*loader.load( 'resources/trucked.obj', 'resources/trucked.mtl', function ( object ) {
+					object.position.y = -1.25;
+					object.position.z = -5;
+					object.rotation.y = Math.PI/2;
+					object.scale.set(0.5,0.5,0.5);
+					truck = object.clone();
+					scene.add(truck);
+				} );*/
 
-			var renderer = new THREE.WebGLRenderer({antialias:false, alpha: false});
-			renderer.setClearColor( 0x000000 );
-			renderer.setSize(window.innerWidth,window.innerHeight);
-			document.body.appendChild(renderer.domElement);
-
-			// Plano
-			var subd = 64;
-			var cbgeometry = new THREE.PlaneGeometry( 160, 500, subd, subd );
-			var cbmaterials = [];
-			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide }) );
-			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xF40000, side: THREE.DoubleSide }) );
-			var l = cbgeometry.faces.length / 2;
-			for( var i = 0; i < l; i ++ ) {
-				j = i * 2;
-				cbgeometry.faces[ j ].materialIndex = ((i + Math.floor(i/subd)) % 2);
-				cbgeometry.faces[ j + 1 ].materialIndex = ((i + Math.floor(i/subd)) % 2);
-			}
-			cbgeometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
-			cb = new THREE.Mesh( cbgeometry, new THREE.MeshFaceMaterial( cbmaterials ) );
-			cb.position.y = -2.5;
-			scene.add( cb );
-
-			//Muros
-			var muroGeometry = new THREE.BoxGeometry(1,1,500);
-			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color : 0xe1e1e1, emissive: 0x2d2d2d });
-			var muro0 = new THREE.Mesh(muroGeometry,material);
-			var muro1 = new THREE.Mesh(muroGeometry,material);
-			muro0.position.x = -20;
-			muro1.position.x = 20;
-			scene.add(muro0);
-			scene.add(muro1);
-
-			//Obstaculos
-			var truck;
-			var obstacles = [];
-			var obsTempPos = [];
-			var collisionBox = [];
-			var collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
-			var numObstacles = 40;
-			THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
-			var loader = new THREE.OBJMTLLoader();
-			loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
-				object.position.y = -2.5;
-				object.visible = false;
-				for (var i = 0; i < numObstacles; i++) {
-					collisionBox[i] = new THREE.Mesh(collisionBoxGeometry, material);
-					obstacles[i] = object.clone();
-					posiciona(i);
-					collisionBox[i].visible = false;
-					scene.add(obstacles[i]);
-					scene.add(collisionBox[i]);
+				//Particulas
+				geometry = new THREE.Geometry();
+				sprite = THREE.ImageUtils.loadTexture( "resources/pump_star_03.png" );
+				for ( i = 0; i < 1000; i ++ ) {
+					var vertex = new THREE.Vector3();
+					vertex.x = 1000 * Math.random() - 500;
+					vertex.y = 500 * Math.random();
+					vertex.z = 1000 * Math.random() - 500;
+					geometry.vertices.push( vertex );
 				}
-				numObstacles = 1;
-			} );
-			/*loader.load( 'resources/trucked.obj', 'resources/trucked.mtl', function ( object ) {
-				object.position.y = -1.25;
-				object.position.z = -5;
-				object.rotation.y = Math.PI/2;
-				object.scale.set(0.5,0.5,0.5);
-				truck = object.clone();
-				scene.add(truck);
-			} );*/
+				particleMaterial = new THREE.PointCloudMaterial( { size: 25, sizeAttenuation: false, map: sprite, transparent: true, fog: false, color: 0xffcccc } );
+				particles = new THREE.PointCloud( geometry, particleMaterial );
+				particles.sortParticles = true;
+				scene.add( particles );
 
-			//Particulas
-			geometry = new THREE.Geometry();
-			sprite = THREE.ImageUtils.loadTexture( "resources/pump_star_03.png" );
-			for ( i = 0; i < 1000; i ++ ) {
-				var vertex = new THREE.Vector3();
-				vertex.x = 1000 * Math.random() - 500;
-				vertex.y = 500 * Math.random();
-				vertex.z = 1000 * Math.random() - 500;
-				geometry.vertices.push( vertex );
+				//Texto
+				text = [];
+				var textParams = {size: 1, height: 0.25, curveSegments: 8, font: "gentilis", style: "italic"};
+				var textoGeometry = new THREE.TextGeometry('Loading',textParams);
+				textoGeometry.computeBoundingBox();
+				var centerOffsetX = -0.5 * ( textoGeometry.boundingBox.max.x - textoGeometry.boundingBox.min.x );
+				var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
+				var textMaterial = new THREE.MeshLambertMaterial( {
+					color : 0xf40000,
+					transparent : true,
+					opacity: 1.0
+				} );
+				text[0] = new THREE.Mesh( textoGeometry, textMaterial );
+				text[0].position.x = centerOffsetX;
+				text[0].position.y = centerOffsetY + 0.5;
+				scene.add(text[0]);
+
+				//Iluminacion
+				ambientLight = new THREE.AmbientLight( 0x101010 );
+				scene.add( ambientLight );
+				directionalLight0 = new THREE.DirectionalLight(0x000000);
+				directionalLight0.position.set(0,200,0).normalize();
+				directionalLight1 = new THREE.DirectionalLight(0x000000);
+				directionalLight1.position.set(0,200,0).normalize();
+				//var pointLight0 = new THREE.PointLight(0x00ff00, 1, 100);
+				//pointLight0.position.set(20,200,0).normalize();
+				
+				scene.add(directionalLight0);
+				scene.add(directionalLight1);
+				//scene.add(pointLight0);
+
+				spotLight = new THREE.SpotLight( 0xffffff, 1.0 );
+				spotLight.position.set( 50, 100, 100 );
+				/*spotLight.castShadow = true;
+				spotLight.shadowMapWidth = 1024;
+				spotLight.shadowMapHeight = 1024;
+				spotLight.shadowCameraNear = 500;
+				spotLight.shadowCameraFar = 4000;
+				spotLight.shadowCameraFov = 30;*/
+				scene.add( spotLight );
+
+				damageLight = new THREE.SpotLight( 0xff0000, 0 );
+				damageLight.position.set( 0, 50, -50 );
+				scene.add( damageLight );
+
+				camera.position.z = 5;
+				camera.rotation.x = 2.5 * Math.PI / 180;
+
+				volume.onChange(function(value) {
+					gainNode.gain.value = value;
+				})
+
+				render();
 			}
-			particleMaterial = new THREE.PointCloudMaterial( { size: 25, sizeAttenuation: false, map: sprite, transparent: true, fog: false, color: 0xffcccc } );
-			particles = new THREE.PointCloud( geometry, particleMaterial );
-			particles.sortParticles = true;
-			scene.add( particles );
-
-			//Texto
-			var text = [];
-			var textParams = {size: 1, height: 0.25, curveSegments: 8, font: "gentilis", style: "italic"};
-			var textoGeometry = new THREE.TextGeometry('Loading',textParams);
-			textoGeometry.computeBoundingBox();
-			var centerOffsetX = -0.5 * ( textoGeometry.boundingBox.max.x - textoGeometry.boundingBox.min.x );
-			var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
-			var textMaterial = new THREE.MeshLambertMaterial( {
-				color : 0xf40000,
-				transparent : true,
-				opacity: 1.0
-			} );
-			text[0] = new THREE.Mesh( textoGeometry, textMaterial );
-			text[0].position.x = centerOffsetX;
-			text[0].position.y = centerOffsetY + 0.5;
-			scene.add(text[0]);
-
-			//Iluminacion
-			var ambientLight = new THREE.AmbientLight( 0x101010 );
-			scene.add( ambientLight );
-			var directionalLight0 = new THREE.DirectionalLight(0x000000);
-			directionalLight0.position.set(0,200,0).normalize();
-			var directionalLight1 = new THREE.DirectionalLight(0x000000);
-			directionalLight1.position.set(0,200,0).normalize();
-			//var pointLight0 = new THREE.PointLight(0x00ff00, 1, 100);
-			//pointLight0.position.set(20,200,0).normalize();
-			
-			//scene.add(directionalLight0);
-			//scene.add(directionalLight1);
-			//scene.add(pointLight0);
-
-			var spotLight = new THREE.SpotLight( 0xffffff, 1.0 );
-			spotLight.position.set( 50, 100, 100 );
-			/*spotLight.castShadow = true;
-			spotLight.shadowMapWidth = 1024;
-			spotLight.shadowMapHeight = 1024;
-			spotLight.shadowCameraNear = 500;
-			spotLight.shadowCameraFar = 4000;
-			spotLight.shadowCameraFov = 30;*/
-			scene.add( spotLight );
-
-			var damageLight = new THREE.SpotLight( 0xff0000, 0 );
-			damageLight.position.set( 0, 50, -50 );
-			scene.add( damageLight );
-
-			camera.position.z = 5;
-			camera.rotation.x = 2.5 * Math.PI / 180;
 
 			window.onresize = onWindowResize;
 			document.onkeydown = onKeyDown;
@@ -276,7 +282,8 @@
 				}
 
 
-				directionalLight1.color.setRGB(0,(average/140),0);
+				//directionalLight0.color.setRGB((average/280),0,0);
+				directionalLight1.color.setRGB(0,(average/280),0);
 				muro0.material.opacity = (average/140)-0.1;
 				particles.rotation.y += 0.0001;
 
@@ -299,8 +306,6 @@
 
 				if(damageLight.intensity > 0)
 					damageLight.intensity --;
-
-				//params.velocidad = (average/140);
 
 				renderer.render(scene,camera);
 				stats.end();	//	Estadisticas
@@ -329,8 +334,6 @@
 						playSound(audioBuffer);
 						game = true;
 					}
-					//directionalLight1.color();
-					//console.log(directionalLight1.color());
 				}
 			}
 
@@ -375,11 +378,6 @@
 				obsTempPos[e] = obstacles[e].position.x;
 			}
 
-			volume.onChange(function(value) {
-				gainNode.gain.value = value;
-			})
-
-			render();
 		</script>
 	</body>
 </html>
