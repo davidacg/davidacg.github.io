@@ -12,6 +12,7 @@ var audioBuffer;
 var sourceNode;
 var gainNode;
 var average;
+var startTime;
 
 // setup a javascript node
 //scriptProcessor = context.createScriptProcessor(2048, 1, 1);
@@ -71,6 +72,7 @@ function loadSound(url) {
 function playSound(buffer) {
     sourceNode.buffer = buffer;
     sourceNode.start(0);
+    startTime = context.currentTime;
 }
 
 function onError(e) {

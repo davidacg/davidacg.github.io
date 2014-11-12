@@ -250,7 +250,16 @@
 				}
 
 				if(game){
-					params.velocidad += 0.00005;
+					if(context.currentTime - startTime > 135){
+						if(params.velocidad>=0){
+							params.velocidad -= 0.01;
+							params.vidas = 0;
+						}else{
+							game = false;
+						}
+					}else{
+						params.velocidad += 0.00005;
+					}
 					cb.position.z += params.velocidad;
 					muro0.position.z += params.velocidad;
 					muro1.position.z += params.velocidad;
@@ -296,8 +305,8 @@
 						j++;
 					}
 				}else{
-					cb.position.z = -240;
-					muro0.position.z = muro1.position.z = -240;
+					//cb.position.z = -240;
+					//muro0.position.z = muro1.position.z = -240;
 				}
 
 				var camRot = 0.0025;
@@ -342,7 +351,7 @@
 						if(obstacles[0].position.y > -7)
 							obstacles[i].position.y -= 0.05;
 						}
-					game = false;
+					//game = false;
 				}
 
 				if(damageLight.intensity > 0)
@@ -418,7 +427,6 @@
 				caster.set(camera.position, rays[0]);
 				collision = caster.intersectObjects(corkCollisionBox);
 				if (collision.length > 0 && collision[0].distance <= params.colision ){
-					console.log(collision);
 					if(plus){
 						score += 1000;
 						plus = false;
