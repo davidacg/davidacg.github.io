@@ -18,7 +18,7 @@ scriptProcessor = context.createScriptProcessor(2048, 1, 1);
 
 // load the sound
 setupAudioNodes();
-loadSound("Late_Night_Snack.mp3");
+loadSound("resources/Coke_Music.mp3");
 
 function setupAudioNodes() {
     // setup a javascript node

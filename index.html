@@ -10,10 +10,12 @@
 		<script src="js/three.min.js"></script>
 		<script src="js/dat.gui.min.js"></script>
 		<script src="js/stats.min.js"></script>
-		<!--<script src="js/loaders/DDSLoader.js"></script>
+		
+		<script src="js/loaders/DDSLoader.js"></script>
 		<script src="js/loaders/MTLLoader.js"></script>
-		<script src="js/loaders/OBJMTLLoader.js"></script>-->
-		<script src="js/helvetiker_regular.typeface.js"></script>
+		<script src="js/loaders/OBJMTLLoader.js"></script>
+
+		<script src="js/gentilis_italic.typeface.js"></script>
 		<script src="js/audio.js"></script>
 
 		<script>
@@ -52,11 +54,12 @@
 			var vulnerable = true;
 
 			var scene = new THREE.Scene();
-			scene.fog = new THREE.FogExp2( 0x000000, 0.05 );
+			//scene.fog = new THREE.FogExp2( 0x000000, 0.05 );
 			var camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
+			var caster = new THREE.Raycaster();
 
 			//var renderer = new THREE.WebGLRenderer();
-			var renderer = new THREE.WebGLRenderer({antialias:true});
+			var renderer = new THREE.WebGLRenderer({antialias:false, alpha: false});
 			renderer.setClearColor( 0x000000 );
 			renderer.setSize(window.innerWidth,window.innerHeight);
 			document.body.appendChild(renderer.domElement);
@@ -66,7 +69,7 @@
 			var cbgeometry = new THREE.PlaneGeometry( 160, 500, subd, subd );
 			var cbmaterials = [];
 			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide }) );
-			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0x000000, side: THREE.DoubleSide }) );
+			cbmaterials.push( new THREE.MeshLambertMaterial( { color: 0xF40000, side: THREE.DoubleSide }) );
 			var l = cbgeometry.faces.length / 2;
 			for( var i = 0; i < l; i ++ ) {
 				j = i * 2;
@@ -80,7 +83,7 @@
 
 			//Muros
 			var muroGeometry = new THREE.BoxGeometry(1,5,500);
-			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, emissive : 0x666666 });
+			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, emissive : 0xe1e1e1 });
 			var muro0 = new THREE.Mesh(muroGeometry,material);
 			var muro1 = new THREE.Mesh(muroGeometry,material);
 			muro0.position.x = -20;
@@ -89,62 +92,61 @@
 			scene.add(muro1);
 
 			//Obstaculos
-			var obstaclesGeometry = new THREE.BoxGeometry(2,5,2);
 			var obstacles = [];
-			var numObstacles = 1000;
-			for (var i = 0; i < numObstacles; i++) {
-				var material = new  THREE.MeshLambertMaterial({
-					emissive : new THREE.Color( 0, Math.random(), Math.random() ),
-					transparent: true, opacity: 1.0});
-				obstacles[i] = new THREE.Mesh(obstaclesGeometry, material);
-				obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
-				obstacles[i].position.z = -(Math.random() * (2500 - 25) + 25);
-				scene.add(obstacles[i]);
-			}
+			var collisionBox = [];
+			var collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
+			var numObstacles = 10;
+			THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+			var loader = new THREE.OBJMTLLoader();
+			loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
+				object.position.y = -2.5;
+				object.visible = false;
+				for (var i = 0; i < numObstacles; i++) {
+					var collisionBoxMaterial = new  THREE.MeshLambertMaterial({color : 0xf00000});
+					collisionBox[i] = new THREE.Mesh(collisionBoxGeometry, material);
+					obstacles[i] = object.clone();
+					collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
+					collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (50 - 25) + 25);
+					collisionBox[i].visible = false;
+					scene.add(obstacles[i]);
+					scene.add(collisionBox[i]);
+				}
+			} );
 
 			//Texto
 			var text = [];
-			var textParams = {size: 1,height: 0.25,curveSegments: 8,font: "helvetiker"};
+			var textParams = {size: 1, height: 0.25, curveSegments: 8, font: "gentilis", style: "italic"};
 			var textoGeometry = new THREE.TextGeometry('Loading',textParams);
 			textoGeometry.computeBoundingBox();
 			var centerOffsetX = -0.5 * ( textoGeometry.boundingBox.max.x - textoGeometry.boundingBox.min.x );
 			var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
 			var textMaterial = new THREE.MeshLambertMaterial( {
-				color : 0xffffff,
-				emissive : 0x101010,
+				color : 0xf40000,
+				emissive : 0x0f0f0f,
 				transparent : true,
 				opacity: 1.0
 			} );
 			text[0] = new THREE.Mesh( textoGeometry, textMaterial );
 			text[0].position.x = centerOffsetX;
-			text[0].position.y = centerOffsetY;
+			text[0].position.y = centerOffsetY + 0.5;
 			scene.add(text[0]);
-
-			//Modelos
-			/*THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
-			var loader = new THREE.OBJMTLLoader();
-			loader.load( 'obj/male02/male02.obj', 'obj/male02/male02_dds.mtl', function ( object ) {
-				object.position.y = -80;
-				object.position.z = -80;
-				scene.add( object );
-			} );*/
 
 			//Iluminacion
 			var ambientLight = new THREE.AmbientLight( 0x101010 );
 			scene.add( ambientLight );
-			var directionalLight0 = new THREE.DirectionalLight(0x000080);
+			var directionalLight0 = new THREE.DirectionalLight(0x000000);
 			directionalLight0.position.set(0,200,0).normalize();
-			var directionalLight1 = new THREE.DirectionalLight(0x008000);
+			var directionalLight1 = new THREE.DirectionalLight(0x000000);
 			directionalLight1.position.set(0,200,0).normalize();
 			//var pointLight0 = new THREE.PointLight(0x00ff00, 1, 100);
 			//pointLight0.position.set(20,200,0).normalize();
 			
-			scene.add(directionalLight0);
-			scene.add(directionalLight1);
+			//scene.add(directionalLight0);
+			//scene.add(directionalLight1);
 			//scene.add(pointLight0);
 
-			var spotLight = new THREE.SpotLight( 0xffffff, 0.5 );
-			spotLight.position.set( 0, 1000, 100 );
+			var spotLight = new THREE.SpotLight( 0xffffff, 1.0 );
+			spotLight.position.set( 50, 100, 100 );
 			/*spotLight.castShadow = true;
 			spotLight.shadowMapWidth = 1024;
 			spotLight.shadowMapHeight = 1024;
@@ -164,15 +166,17 @@
 			document.onkeyup = onKeyUp;
 
 			function render() {
-				if(game){stats.begin();}	//	Estadisticas
+				stats.begin();	//	Estadisticas
 				requestAnimationFrame(render);
 				//camera.fov += 0.1;
 				//camera.updateProjectionMatrix();
 				//cb.position.z += 0.25;
 				if(!ready)
 				{
-					if(audioBuffer !== undefined)
-						text[0].material.opacity -= 0.01;
+					if(audioBuffer !== undefined){
+						text[0].material.opacity -= 0.025;
+						text[0].position.y -= 0.01;
+					}
 					if(text[0].material.opacity <= 0)
 					{
 						scene.remove(text[0]);
@@ -184,8 +188,18 @@
 					cb.position.z += params.velocidad;
 					muro0.position.z += params.velocidad;
 					muro1.position.z += params.velocidad;
-					for (var i = 0; i < numObstacles; i++)
+					for (var i = 0; i < numObstacles; i++){
 						obstacles[i].position.z += params.velocidad;
+						collisionBox[i].position.z = obstacles[i].position.z;
+						if(5 >= obstacles[i].position.z && obstacles[i].position.z >= -40){
+							obstacles[i].visible = true;
+						}
+						else{
+							obstacles[i].visible = false;
+							collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
+							collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (60 - 40) + 40);
+						}
+					}
 					if(cb.position.z > 270){
 						cb.position.z = -300;
 						muro0.position.z = muro1.position.z = -300;
@@ -231,10 +245,8 @@
 						sourceNode.stop();
 					}
 					for (var i = 0; i < numObstacles; i++){
-						if(obstacles[0].position.y > -5.5)
+						if(obstacles[0].position.y > -7)
 							obstacles[i].position.y -= 0.05;
-						if(obstacles[0].material.opacity > 0)
-							obstacles[i].material.opacity -= 0.005;
 						}
 					game = false;
 				}
@@ -245,7 +257,7 @@
 				//params.velocidad = (average/140);
 
 				renderer.render(scene,camera);
-				if(game){stats.end();}	//	Estadisticas
+				stats.end();	//	Estadisticas
 			}
 
 			function onWindowResize() {
@@ -296,11 +308,10 @@
 					new THREE.Vector3(1,0,0),
 					new THREE.Vector3(-1,0,0),
 				]
-				var caster = new THREE.Raycaster();
 				caster.set(camera.position, rays[0]);
-				var collision = caster.intersectObjects(obstacles);
+				var collision = caster.intersectObjects(collisionBox);
 
-				if (collision.length > 0 && collision[0].distance <= params.colision){
+				if (collision.length > 0 && collision[0].distance <= params.colision && params.vidas > 0){
 					damageLight.intensity = 10;
 					if(vulnerable){
 						params.vidas --;
