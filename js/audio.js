@@ -17,8 +17,8 @@ var average;
 //scriptProcessor = context.createScriptProcessor(2048, 1, 1);
 
 // load the sound
-setupAudioNodes();
-loadSound("resources/Coke_Music.mp3");
+//setupAudioNodes();
+//loadSound("resources/Coke_Music.mp3");
 
 function setupAudioNodes() {
     // setup a javascript node
