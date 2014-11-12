@@ -30,10 +30,11 @@
 
 			//	dat.gui
 			var parametros = function() {
-				this.velocidad = 0.5;
+				this.velocidad = 0.4;
 				this.colision = 1;
 				this.Volumen = 0.8;
 				this.vidas = 5;
+				this.numObstacles = 0;
 			};
 			var params = new parametros();
 			var startGame = { Iniciar:function(){
@@ -45,6 +46,7 @@
 			var gui = new dat.GUI();
 			var volume = gui.add(params, 'Volumen', 0, 1).listen();
 			gui.add(params, 'vidas', 0, 5).listen();
+			gui.add(params, 'numObstacles', 0, 40).listen();
 			gui.add(startGame,'Iniciar');
 			gainNode.gain.value = volume.getValue();
 
@@ -91,9 +93,10 @@
 
 			//Obstaculos
 			var obstacles = [];
+			var obsTempPos = [];
 			var collisionBox = [];
 			var collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
-			var numObstacles = 20;
+			var numObstacles = 40;
 			THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
 			var loader = new THREE.OBJMTLLoader();
 			loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
@@ -107,6 +110,7 @@
 					scene.add(obstacles[i]);
 					scene.add(collisionBox[i]);
 				}
+				numObstacles = 1;
 			} );
 
 			//Particulas
@@ -180,8 +184,10 @@
 				stats.begin();	//	Estadisticas
 				requestAnimationFrame(render);
 				time += 0.01;
-				spotLight.position.x = Math.sin(time)*50;
-				spotLight.position.z = Math.sin(time)*50;
+				if(numObstacles < 40)
+					params.numObstacles = numObstacles = Math.floor(time);
+				spotLight.position.x = Math.sin(time)*30;
+				spotLight.position.z = 30 + (Math.cos(time)*25);
 				//camera.fov += 0.1;
 				//camera.updateProjectionMatrix();
 				//cb.position.z += 0.25;
@@ -200,19 +206,24 @@
 				}
 
 				if(game){
-					params.velocidad += 0.000025;
+					params.velocidad += 0.00005;
 					cb.position.z += params.velocidad;
 					muro0.position.z += params.velocidad;
 					muro1.position.z += params.velocidad;
+
 					for (var i = 0; i < numObstacles; i++){
 						obstacles[i].position.z += params.velocidad;
 						collisionBox[i].position.z = obstacles[i].position.z;
-						if(5 >= obstacles[i].position.z && obstacles[i].position.z >= -40){
+						if(numObstacles > 20){
+							collisionBox[i].position.x = obstacles[i].position.x = Math.sin(time*5) + obsTempPos[i];
+						}
+						if(obstacles[i].position.z <= 5 && obstacles[i].position.z >= -40){
 							obstacles[i].visible = true;
 						}
 						else{
 							obstacles[i].visible = false;
-							posiciona(i);
+							if(obstacles[i].position.z > 5)
+								posiciona(i);
 						}
 					}
 					if(cb.position.z > 210){
@@ -347,9 +358,10 @@
 				}
 			}
 
-			function posiciona(i){
-				collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
-				collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (60 - 40) + 40);
+			function posiciona(e){
+				collisionBox[e].position.x = obstacles[e].position.x = 36 * Math.random() -18;
+				collisionBox[e].position.z = obstacles[e].position.z = -40 * Math.random() -40;
+				obsTempPos[e] = obstacles[e].position.x;
 			}
 
 			volume.onChange(function(value) {
