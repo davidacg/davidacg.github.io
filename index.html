@@ -83,7 +83,7 @@
 
 			//Muros
 			var muroGeometry = new THREE.BoxGeometry(1,5,500);
-			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, emissive : 0xe1e1e1 });
+			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color : 0xe1e1e1, emissive: 0x2d2d2d });
 			var muro0 = new THREE.Mesh(muroGeometry,material);
 			var muro1 = new THREE.Mesh(muroGeometry,material);
 			muro0.position.x = -20;
@@ -102,11 +102,9 @@
 				object.position.y = -2.5;
 				object.visible = false;
 				for (var i = 0; i < numObstacles; i++) {
-					var collisionBoxMaterial = new  THREE.MeshLambertMaterial({color : 0xf00000});
 					collisionBox[i] = new THREE.Mesh(collisionBoxGeometry, material);
 					obstacles[i] = object.clone();
-					collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
-					collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (60 - 40) + 40);
+					posiciona(i);
 					collisionBox[i].visible = false;
 					scene.add(obstacles[i]);
 					scene.add(collisionBox[i]);
@@ -122,7 +120,7 @@
 			var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
 			var textMaterial = new THREE.MeshLambertMaterial( {
 				color : 0xf40000,
-				emissive : 0x0f0f0f,
+				//emissive : 0x0f0f0f,
 				transparent : true,
 				opacity: 1.0
 			} );
@@ -185,6 +183,7 @@
 				}
 
 				if(game){
+					params.velocidad += 0.000025;
 					cb.position.z += params.velocidad;
 					muro0.position.z += params.velocidad;
 					muro1.position.z += params.velocidad;
@@ -196,13 +195,12 @@
 						}
 						else{
 							obstacles[i].visible = false;
-							collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
-							collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (60 - 40) + 40);
+							posiciona(i);
 						}
 					}
-					if(cb.position.z > 270){
-						cb.position.z = -300;
-						muro0.position.z = muro1.position.z = -300;
+					if(cb.position.z > 220){
+						cb.position.z = -250;
+						muro0.position.z = muro1.position.z = -250;
 					}
 				}else{
 					cb.position.z = -250;
@@ -233,7 +231,7 @@
 
 
 				directionalLight1.color.setRGB(0,(average/140),0);
-				muro0.material.opacity = (average/140);
+				muro0.material.opacity = (average/140)-0.1;
 
 				colisiona();
 
@@ -257,7 +255,7 @@
 				//params.velocidad = (average/140);
 
 				renderer.render(scene,camera);
-				stats.end();	//	Estadisticas
+				//stats.end();	//	Estadisticas
 			}
 
 			function onWindowResize() {
@@ -321,6 +319,11 @@
 						},500)
 					}
 				}
+			}
+
+			function posiciona(i){
+				collisionBox[i].position.x = obstacles[i].position.x = Math.random() * (18 - (-18)) + (-18);
+				collisionBox[i].position.z = obstacles[i].position.z = -(Math.random() * (60 - 40) + 40);
 			}
 
 			volume.onChange(function(value) {
