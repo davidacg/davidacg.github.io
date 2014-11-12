@@ -21,6 +21,7 @@
 		<script>
 			//	Estadisticas
 			var stats = new Stats();
+			var time = 0.0;
 			stats.setMode(0); // 0: fps, 1: ms
 			stats.domElement.style.position = 'absolute';
 			stats.domElement.style.left = '0px';
@@ -43,8 +44,6 @@
 			}};
 			var gui = new dat.GUI();
 			var volume = gui.add(params, 'Volumen', 0, 1).listen();
-			//gui.add(params, 'velocidad', 0, 1).listen();
-			//gui.add(params, 'colision', 0, 1);
 			gui.add(params, 'vidas', 0, 5).listen();
 			gui.add(startGame,'Iniciar');
 			gainNode.gain.value = volume.getValue();
@@ -58,7 +57,6 @@
 			var camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
 			var caster = new THREE.Raycaster();
 
-			//var renderer = new THREE.WebGLRenderer();
 			var renderer = new THREE.WebGLRenderer({antialias:false, alpha: false});
 			renderer.setClearColor( 0x000000 );
 			renderer.setSize(window.innerWidth,window.innerHeight);
@@ -135,7 +133,6 @@
 			var centerOffsetY = -0.5 * ( textoGeometry.boundingBox.max.y - textoGeometry.boundingBox.min.y );
 			var textMaterial = new THREE.MeshLambertMaterial( {
 				color : 0xf40000,
-				//emissive : 0x0f0f0f,
 				transparent : true,
 				opacity: 1.0
 			} );
@@ -169,7 +166,7 @@
 			scene.add( spotLight );
 
 			var damageLight = new THREE.SpotLight( 0xff0000, 0 );
-			damageLight.position.set( 0, 1000, -100 );
+			damageLight.position.set( 0, 50, -50 );
 			scene.add( damageLight );
 
 			camera.position.z = 5;
@@ -182,6 +179,9 @@
 			function render() {
 				stats.begin();	//	Estadisticas
 				requestAnimationFrame(render);
+				time += 0.01;
+				spotLight.position.x = Math.sin(time)*50;
+				spotLight.position.z = Math.sin(time)*50;
 				//camera.fov += 0.1;
 				//camera.updateProjectionMatrix();
 				//cb.position.z += 0.25;
@@ -264,6 +264,7 @@
 					if(params.Volumen > 0){
 						params.Volumen -= 0.01;
 						gainNode.gain.value = params.Volumen;
+						spotLight.intensity -= 0.01;
 					}else{
 						sourceNode.stop();
 					}
