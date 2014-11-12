@@ -95,7 +95,7 @@
 			var obstacles = [];
 			var collisionBox = [];
 			var collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
-			var numObstacles = 40;
+			var numObstacles = 30;
 			THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
 			var loader = new THREE.OBJMTLLoader();
 			loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
@@ -110,6 +110,21 @@
 					scene.add(collisionBox[i]);
 				}
 			} );
+
+			//Particulas
+			geometry = new THREE.Geometry();
+			sprite = THREE.ImageUtils.loadTexture( "resources/pump_star_03.png" );
+			for ( i = 0; i < 1000; i ++ ) {
+				var vertex = new THREE.Vector3();
+				vertex.x = 1000 * Math.random() - 500;
+				vertex.y = 500 * Math.random();
+				vertex.z = 1000 * Math.random() - 500;
+				geometry.vertices.push( vertex );
+			}
+			particleMaterial = new THREE.PointCloudMaterial( { size: 35, sizeAttenuation: false, map: sprite, transparent: true, fog: false, color: 0xffffff } );
+			particles = new THREE.PointCloud( geometry, particleMaterial );
+			particles.sortParticles = true;
+			scene.add( particles );
 
 			//Texto
 			var text = [];
@@ -232,6 +247,8 @@
 
 				directionalLight1.color.setRGB(0,(average/140),0);
 				muro0.material.opacity = (average/140)-0.1;
+				particleMaterial.size = 20 + ((average/140) * 40);
+				particles.rotation.y += 0.0001;
 
 				colisiona();
 
@@ -255,7 +272,7 @@
 				//params.velocidad = (average/140);
 
 				renderer.render(scene,camera);
-				//stats.end();	//	Estadisticas
+				stats.end();	//	Estadisticas
 			}
 
 			function onWindowResize() {
