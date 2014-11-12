@@ -82,7 +82,7 @@
 			scene.add( cb );
 
 			//Muros
-			var muroGeometry = new THREE.BoxGeometry(1,5,500);
+			var muroGeometry = new THREE.BoxGeometry(1,1,500);
 			var material = new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color : 0xe1e1e1, emissive: 0x2d2d2d });
 			var muro0 = new THREE.Mesh(muroGeometry,material);
 			var muro1 = new THREE.Mesh(muroGeometry,material);
@@ -95,7 +95,7 @@
 			var obstacles = [];
 			var collisionBox = [];
 			var collisionBoxGeometry = new THREE.BoxGeometry(2,5,2);
-			var numObstacles = 30;
+			var numObstacles = 20;
 			THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
 			var loader = new THREE.OBJMTLLoader();
 			loader.load( 'resources/coke_can.obj', 'resources/coke_can.mtl', function ( object ) {
@@ -173,6 +173,7 @@
 			scene.add( damageLight );
 
 			camera.position.z = 5;
+			camera.rotation.x = 2.5 * Math.PI / 180;
 
 			window.onresize = onWindowResize;
 			document.onkeydown = onKeyDown;
@@ -189,6 +190,7 @@
 					if(audioBuffer !== undefined){
 						text[0].material.opacity -= 0.025;
 						text[0].position.y -= 0.01;
+						particleMaterial.size -= 2;
 					}
 					if(text[0].material.opacity <= 0)
 					{
@@ -216,6 +218,13 @@
 					if(cb.position.z > 220){
 						cb.position.z = -250;
 						muro0.position.z = muro1.position.z = -250;
+					}
+					particleMaterial.size = 20 + ((average/140) * 20);
+					var j = 0;
+					for( var i = 0; i < particles.geometry.vertices.length; i ++ ) {
+						if(j > analyser.fftSize * 0.25){j = 0;}
+						particles.geometry.vertices[i].y = array[j] * 0.5;
+						j++;
 					}
 				}else{
 					cb.position.z = -250;
@@ -247,7 +256,6 @@
 
 				directionalLight1.color.setRGB(0,(average/140),0);
 				muro0.material.opacity = (average/140)-0.1;
-				particleMaterial.size = 20 + ((average/140) * 40);
 				particles.rotation.y += 0.0001;
 
 				colisiona();

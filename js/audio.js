@@ -14,7 +14,7 @@ var gainNode;
 var average;
 
 // setup a javascript node
-scriptProcessor = context.createScriptProcessor(2048, 1, 1);
+//scriptProcessor = context.createScriptProcessor(2048, 1, 1);
 
 // load the sound
 setupAudioNodes();
@@ -22,15 +22,15 @@ loadSound("resources/Coke_Music.mp3");
 
 function setupAudioNodes() {
     // setup a javascript node
-    scriptProcessor = context.createScriptProcessor(2048, 1, 1);
+    scriptProcessor = context.createScriptProcessor(256, 1, 1);
     // connect to destination, else it isn't called
     scriptProcessor.connect(context.destination);
 
     // setup a analyzer
     analyser = context.createAnalyser();
-    analyser.smoothingTimeConstant = 0.3;
+    analyser.smoothingTimeConstant = 0.9;
     //analyser.fftSize = 1024;
-    analyser.fftSize = 64;
+    analyser.fftSize = 2048;
 
     // create a buffer source node
     sourceNode = context.createBufferSource();
@@ -79,7 +79,7 @@ function onError(e) {
 
 scriptProcessor.onaudioprocess = function() {
     // get the average, bincount is fftsize / 2
-    var array = new Uint8Array(analyser.frequencyBinCount);
+    array = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(array);
     average = getAverageVolume(array)
 }
